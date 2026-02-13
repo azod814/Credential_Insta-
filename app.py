@@ -1,6 +1,6 @@
+from flask import Flask, request, jsonify
 import os
 import requests
-from flask import Flask, request, render_template, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -72,14 +72,20 @@ def check_instagram_login(username, password):
         return {"status": 0, "session_id": None, "error": f"An error occurred: {e}"}
 
 
-# Flask Routes (Previous Part)
+# --- Flask Routes ---
 
 @app.route('/')
 def index():
     """
     Yeh route tumhe local host par login page dikhayega.
     """
-    return render_template('login.html')
+    try:
+        # Apni file ka path check kar lo
+        file_path = os.path.join(os.path.dirname(__file__), 'templates', 'login.html')
+        with open(file_path, 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Error: login.html file not found in the templates folder.", 404
 
 @app.route('/check', methods=['POST'])
 def check_credentials():
@@ -127,9 +133,9 @@ def check_credentials():
         "status": result['status']
     })
 
+# --- Main block to run the server ---
 if __name__ == '__main__':
     # Yeh line current working directory set karegi jahan pe app.py file hai
-    import os
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     print("Tool starting...")
