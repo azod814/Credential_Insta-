@@ -127,11 +127,12 @@ def check_credentials():
         "status": result['status']
     })
 
-# --- Main block to run the server ---
 if __name__ == '__main__':
-    # Server ko start karna
-    # '0.0.0.0' ka matlab hai ki ye local network se accessible hoga
-    # port 5000 par run karenge
+    # Yeh line current working directory set karegi jahan pe app.py file hai
+    import os
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     print("Tool starting...")
     print("Open http://127.0.0.1:5000 in your browser to create the login page.")
+    print("Current working directory set to:", os.getcwd())
     app.run(host='0.0.0.0', port=5000, debug=True)
