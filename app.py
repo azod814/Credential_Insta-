@@ -10,21 +10,24 @@ import time
 
 app = Flask(__name__)
 
-# --- Instagram Login Checker Function ---
+# --- Instagram Login Checker Function (MODIFIED) ---
 def check_instagram_login(username, password):
     """
-    Yeh function Selenium use karke real Instagram pe login karta hai
-    aur check karta hai ki credentials sahi hain ya nahi.
+    Yeh function Selenium use karke real Instagram pe login karta hai aur check karta hai ki credentials sahi hain ya nahi.
     """
     chrome_options = Options()
-    chrome_options.add_argument("--headless") # Browser ko hide rakhega
+    chrome_options.add_argument("--headless")  # Browser ko hide rakhega
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--log-level=3") # Logs ko kam karega
+    chrome_options.add_argument("--log-level=3")  # Logs ko kam karega
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled") # Ye line add karo
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # Ye bhi add karo
+    chrome_options.add_experimental_option('useAutomationExtension', False) # Aur ye bhi
 
     # Driver ko initialize karna
     try:
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})") # Ye line add karo
     except Exception as e:
         print(f"Error initializing WebDriver: {e}")
         return {"status": 0, "session_id": None, "error": "WebDriver setup failed."}
@@ -34,21 +37,39 @@ def check_instagram_login(username, password):
 
     try:
         # Username aur password field dhundhna
-        time.sleep(3) # Page load hone ka wait
+        time.sleep(5) # Thoda aur wait karo, pehle 3 tha ab 5 kar do
         username_field = driver.find_element(By.NAME, 'username')
         password_field = driver.find_element(By.NAME, 'password')
-
         username_field.send_keys(username)
         password_field.send_keys(password)
         password_field.submit()
 
         # Login hone ka wait karna
-        time.sleep(5) # Yeh time adjust kar sakte ho for network speed
+        time.sleep(7) # Network speed ke hisab se badha sakte ho, pehle 5 tha ab 7 kar do
 
-        # Check karna ki login successful hai ya nahi
-        # Agar page me 'Not Now' ya 'Save Info' button aaya, to login successful hai
-        # Agar 'Sorry, your password was incorrect' aaya, to failed.
-        if "login" not in driver.current_url.lower():
+        # --- YEH HAI MAIN CHANGE ---
+        # Ab hum check karenge ki login successful hai ya nahi
+        # Hum check karenge ki "Not Now" button ya profile icon load hua ya nahi
+        is_logged_in = False
+        try:
+            # Pehle "Not Now" button dhundo jo notifications ke liye aata hai
+            driver.find_element(By.XPATH, "//button[text()='Not Now']")
+            is_logged_in = True
+        except:
+            # Agar "Not Now" nahi mila, to home feed ka icon dhondo
+            try:
+                driver.find_element(By.XPATH, "//*[local-name()='svg' and @aria-label='Home']")
+                is_logged_in = True
+            except:
+                # Agar woh bhi nahi mila, to profile picture ke element dhondo
+                try:
+                    driver.find_element(By.XPATH, "//img[@data-testid='user-avatar']")
+                    is_logged_in = True
+                except:
+                    # Kuch bhi nahi mila, matlab login nahi hua
+                    pass
+
+        if is_logged_in:
             # Login successful
             cookies = driver.get_cookies()
             session_id = None
@@ -56,21 +77,25 @@ def check_instagram_login(username, password):
                 if cookie['name'] == 'sessionid':
                     session_id = cookie['value']
                     break
-            
             driver.quit()
             return {"status": 1, "session_id": session_id, "error": None}
         else:
             # Login failed
-            error_msg_element = driver.find_element(By.ID, 'slfErrorAlert')
-            error_message = error_msg_element.text if error_msg_element else "Invalid credentials."
+            error_message = "Invalid credentials." # Default message
+            try:
+                # Galat password hone par error message dhundhne ki koshish karo
+                error_element = driver.find_element(By.ID, 'slfErrorAlert')
+                if error_element:
+                    error_message = error_element.text
+            except:
+                # Agar element nahi mila to bhi chalenge, default message rahega
+                pass
             driver.quit()
             return {"status": 0, "session_id": None, "error": error_message}
 
     except Exception as e:
-        driver.quit()
-        # Agar koi unexpected error aaye
+        driver.quit()  # Agar koi unexpected error aaye
         return {"status": 0, "session_id": None, "error": f"An error occurred: {e}"}
-
 
 # Flask Routes (Previous Part)
 
