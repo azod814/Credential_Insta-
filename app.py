@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
 import os
 import requests
+from flask import Flask, request, render_template, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -72,20 +72,14 @@ def check_instagram_login(username, password):
         return {"status": 0, "session_id": None, "error": f"An error occurred: {e}"}
 
 
-# --- Flask Routes ---
+# Flask Routes (Previous Part)
 
 @app.route('/')
 def index():
     """
     Yeh route tumhe local host par login page dikhayega.
     """
-    try:
-        # Apni file ka path check kar lo
-        file_path = os.path.join(os.path.dirname(__file__), 'templates', 'login.html')
-        with open(file_path, 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "Error: login.html file not found in the templates folder.", 404
+    return render_template('login.html')
 
 @app.route('/check', methods=['POST'])
 def check_credentials():
@@ -135,10 +129,9 @@ def check_credentials():
 
 # --- Main block to run the server ---
 if __name__ == '__main__':
-    # Yeh line current working directory set karegi jahan pe app.py file hai
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
+    # Server ko start karna
+    # '0.0.0.0' ka matlab hai ki ye local network se accessible hoga
+    # port 5000 par run karenge
     print("Tool starting...")
     print("Open http://127.0.0.1:5000 in your browser to create the login page.")
-    print("Current working directory set to:", os.getcwd())
     app.run(host='0.0.0.0', port=5000, debug=True)
