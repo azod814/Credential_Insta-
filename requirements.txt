@@ -4,3 +4,4 @@ beautifulsoup4==4.12.2
 selenium==4.15.2
 webdriver-manager==4.0.1
 undetected-chromedriver==3.5.4
+selenium-stealth==1.0.6
